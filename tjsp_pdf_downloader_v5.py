@@ -14,6 +14,7 @@ import requests
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
 PDF_MAGIC = b"%PDF-"
+BASE_URL = "https://eproc-consulta.tjsp.jus.br/consulta_1g/"
 
 
 def slugify(name: str) -> str:
@@ -34,9 +35,25 @@ def unique_path(path: Path) -> Path:
         i += 1
 
 
+def complete_url(line: str) -> str:
+    """Se a linha nao comecar com http, adiciona a URL base do EPROC."""
+    line = line.strip()
+    if line.startswith(('http://', 'https://')):
+        return line
+    return BASE_URL + line.lstrip('/')
+
+
 def read_urls(file_path: Path) -> list[str]:
     text = file_path.read_text(encoding='utf-8', errors='ignore')
-    return [line.strip() for line in text.splitlines() if line.strip().startswith(('http://', 'https://'))]
+    urls = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # aceita links relativos (controlador.php?...) e absolutos (https://...)
+        if line.startswith(('http://', 'https://')) or 'controlador.php' in line or 'acao=' in line:
+            urls.append(complete_url(line))
+    return urls
 
 
 def build_session(args) -> requests.Session:
@@ -140,7 +157,7 @@ def download_one(index, url, args):
 
 
 def main():
-    p = argparse.ArgumentParser(description='Baixa PDFs do TJSP usando cookies da sessao do Chrome.')
+    p = argparse.ArgumentParser(description='Baixa PDFs do TJSP/EPROC. Links relativos sao completados automaticamente com a URL base.')
     p.add_argument('--input', default='urls_extraidos.txt')
     p.add_argument('--output-dir', default='downloads')
     p.add_argument('--workers', type=int, default=1)
@@ -160,6 +177,8 @@ def main():
     if not urls:
         print('Nenhuma URL valida encontrada.', file=sys.stderr)
         sys.exit(1)
+
+    print(f'[info] {len(urls)} URL(s) carregada(s). Base URL aplicada automaticamente para links relativos.')
 
     results = []
     with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:

@@ -10,11 +10,27 @@ from urllib.parse import urlparse, urljoin
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+BASE_URL = "https://eproc-consulta.tjsp.jus.br/consulta_1g/"
+
+
+def complete_url(line: str) -> str:
+    """Se a linha nao comecar com http, adiciona a URL base do EPROC."""
+    line = line.strip()
+    if line.startswith(('http://', 'https://')):
+        return line
+    return BASE_URL + line.lstrip('/')
 
 
 def read_urls(path: Path) -> list[str]:
     txt = path.read_text(encoding='utf-8', errors='ignore')
-    return [line.strip() for line in txt.splitlines() if line.strip().startswith(('http://', 'https://'))]
+    urls = []
+    for line in txt.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith(('http://', 'https://')) or 'controlador.php' in line or 'acao=' in line:
+            urls.append(complete_url(line))
+    return urls
 
 
 def safe_name(url: str, index: int) -> str:
@@ -27,7 +43,7 @@ def safe_name(url: str, index: int) -> str:
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Abre o documento no Chromium e salva como PDF impresso.')
+    ap = argparse.ArgumentParser(description='Abre o documento no Chromium e salva como PDF impresso. Links relativos sao completados automaticamente.')
     ap.add_argument('--input', default='1.txt')
     ap.add_argument('--output-dir', default='downloads_print')
     ap.add_argument('--limit', type=int, default=1)
@@ -45,6 +61,8 @@ def main():
         urls = urls[:args.limit]
     if not urls:
         raise SystemExit('Nenhuma URL valida encontrada.')
+
+    print(f'[info] {len(urls)} URL(s) carregada(s). Base URL aplicada automaticamente para links relativos.')
 
     outdir = Path(args.output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
