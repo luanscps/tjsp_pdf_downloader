@@ -215,6 +215,37 @@ A abordagem via **Playwright** abre o documento no Chromium, renderiza a página
 
 ---
 
+## Segurança do código
+
+Este script foi projetado para ser seguro para execução em computadores de escritório, ambientes corporativos e sistemas de órgãos públicos. Abaixo estão os pontos auditáveis do comportamento do código:
+
+### ✅ O que o script faz — e o que ele NÃO faz
+
+| Comportamento | Detalhe |
+|---|---|
+| **Faz apenas requisições HTTP GET** | Não executa código remoto, não usa `eval`, não abre sockets, não cria servidores |
+| **Salva arquivos somente na pasta especificada** | Todos os PDFs vão para `--output-dir`. O script nunca escreve fora desse diretório |
+| **Comunica apenas com o portal TJSP** | A URL base está fixada em `eproc-consulta.tjsp.jus.br`. Nenhuma requisição é feita a servidores externos |
+| **Cookie passado manualmente pelo usuário** | O cookie de sessão é fornecido via argumento `--cookie-header`. Nada é armazenado em disco nem enviado a terceiros |
+| **Sem instalação de serviços, daemons ou agentes** | É um script CLI simples. Não registra nada no sistema operacional, não cria tarefas agendadas, não modifica o registro do Windows |
+| **Código 100% auditável** | Código aberto, sem ofuscação, sem dependências proprietárias. Qualquer técnico de TI pode revisar linha a linha |
+
+### ⚠️ Ponto de atenção — Modo Playwright em ambientes com TI restritiva
+
+O **Modo 2 (Playwright)** instala e executa um navegador **Chromium headless** localmente na máquina. Em ambientes com políticas de TI rígidas — como computadores de órgãos públicos com **GPO (Group Policy)**, **AppLocker** ou **antivírus corporativo** — essa instalação pode ser bloqueada ou gerar alertas de segurança.
+
+**Isso não é um problema do código em si**, mas sim uma consequência natural de qualquer ferramenta que instale um navegador headless.
+
+O que fazer nesse cenário:
+
+1. **Use o Modo 1 (`requests`)** — não instala nenhum navegador, não gera alertas, funciona em qualquer ambiente com Python e acesso à internet.
+2. Se precisar do Modo 2, solicite ao setor de TI a **liberação do Chromium headless** ou execute o script em uma máquina sem restrições de instalação.
+3. Como alternativa ao Playwright, você pode fazer o download manual dos documentos pelo navegador e usar o Modo 1 para os demais.
+
+> **Resumo:** Para uso em computadores do governo ou ambientes corporativos, o **Modo 1 (`tjsp_pdf_downloader_v5.py`) é a escolha recomendada** — sem instalação de navegador, sem riscos de bloqueio por TI.
+
+---
+
 ## Sistema testado
 
 | Campo | Valor |
